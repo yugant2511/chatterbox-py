@@ -6,6 +6,7 @@ from database import engine, get_db
 from auth import create_access_token, verify_password, get_current_user
 from schemas import UserLogin
 from routers import users, chat
+from fastapi.security import OAuth2PasswordRequestForm
 import models
 
 models.Base.metadata.create_all(bind=engine)
@@ -33,9 +34,9 @@ def health():
     return {"status": "ok"}
 
 @app.post("/login")
-def login(credentials: UserLogin, db: Session = Depends(get_db)):
+def login(credentials: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     import models as m
-    user = db.query(m.User).filter(m.User.email == credentials.email).first()
+    user = db.query(m.User).filter(m.User.email == credentials.username).first()
     if not user:
         from fastapi import HTTPException
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -44,7 +45,6 @@ def login(credentials: UserLogin, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     token = create_access_token(data={"sub": user.email, "user_id": user.id})
     return {"access_token": token, "token_type": "bearer"}
-
 @app.get("/chat", response_class=HTMLResponse)
 def chat_page():
     with open("test_chat.html") as f:
